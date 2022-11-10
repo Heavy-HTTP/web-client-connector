@@ -83,6 +83,7 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
                 currentRequest.setRequestHeader(X_HEAVY_HTTP_ID, uniqueId);
                 currentRequest.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.SEND_ERROR);
                 contextMap.delete(currentRequest);
+                contextMap.delete(currentRequest.upload);
                 XMLHttpRequestSend.apply(currentRequest);
                 XMLHttpRequestAbort.apply(currentRequest);
             }
@@ -91,6 +92,7 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
                 currentRequest.setRequestHeader(X_HEAVY_HTTP_ID, uniqueId);
                 currentRequest.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.SEND_ERROR);
                 contextMap.delete(currentRequest);
+                contextMap.delete(currentRequest.upload);
                 XMLHttpRequestSend.apply(currentRequest);
             })
 
@@ -145,6 +147,7 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
                         currentRequest.setRequestHeader(X_HEAVY_HTTP_ID, uniqueId);
                         currentRequest.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.SEND_ERROR);
                         contextMap.delete(currentRequest);
+                        contextMap.delete(currentRequest.upload);
                         XMLHttpRequestSend.apply(currentRequest);
                         XMLHttpRequestAbort.apply(currentRequest);
                     }
