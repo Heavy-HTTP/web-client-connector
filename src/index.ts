@@ -1,4 +1,4 @@
-import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, X_HEAVY_HTTP_ID } from "./constant";
+import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, X_HEAVY_HTTP_CONTENT_LENGTH, X_HEAVY_HTTP_ID } from "./constant";
 
 interface ClientConfig {
     size: number
@@ -6,7 +6,7 @@ interface ClientConfig {
 
 
 interface Transporter {
-    transport: (responseText: string, preHook: (abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => void
+    transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => void
 }
 
 export const initialize = (clientConfig: ClientConfig, transporter: Transporter): void => {
@@ -58,17 +58,77 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
         contextMap.set(this, listenerContext);
     };
 
+    function getContentLength(content: Document | Blob | FormData | URLSearchParams | ArrayBufferView | ArrayBuffer | string):number {
+
+        if (content instanceof Blob) {
+            return content.size;
+        }
+    
+        if (content instanceof FormData) {
+            // For Content-Disposition
+            const contentDispositionLength = 50; // estimated max value
+            // According to RFC1521 the maximum length of boundary is 70. But the browser implementations are usually much lower.
+            const boundaryLength = 70; // estimated max value
+            let length = 0;
+            const entries = content.entries();
+            for (const [key, value] of entries) {
+                length += key.length + boundaryLength + contentDispositionLength;
+                if (typeof value === 'object') {
+                    length += value.size;
+                } else {
+                    length += String(value).length;
+                }
+            }
+            return length;
+        }
+
+        if (content instanceof URLSearchParams) {
+            return Array.from(content).length;
+        }
+
+        if (content instanceof ArrayBuffer
+            || content instanceof DataView
+            || content instanceof BigInt64Array
+            || content instanceof BigUint64Array
+            || content instanceof Float32Array
+            || content instanceof Float64Array
+            || content instanceof Int8Array
+            || content instanceof Int16Array
+            || content instanceof Int32Array
+            || content instanceof Uint8Array
+            || content instanceof Uint8ClampedArray
+            || content instanceof Uint32Array
+            || content instanceof Uint16Array) {
+            return content.byteLength;
+        }
+
+        if (typeof content === 'string') {
+            return content.length;
+        }
+
+        if (content instanceof Document) {
+            const serializer = new XMLSerializer();
+            return serializer.serializeToString(content).length;
+        }
+        return content.byteLength;
+
+    }
+
 
     XMLHttpRequest.prototype.send = function (data) {
 
         const requestContext = contextMap.get(this);
         const listenerContext = contextMap.get(this.upload)
-        // fix length issue for document types
-        if (data && data.toString().length > clientConfig.size && !(X_HEAVY_HTTP_ID in requestContext.headers)) {
+        let contentType: string | null = null;
+
+        if (data && getContentLength(data) > clientConfig.size && !(X_HEAVY_HTTP_ID in requestContext.headers)) {
 
             const beginXMLRequest = new XMLHttpRequest();
             beginXMLRequest.open(requestContext.method, requestContext.url, true, requestContext.username, requestContext.password);
             for (const headerKey in requestContext.headers) {
+                if (headerKey.toLowerCase() === 'content-type'.toLowerCase()) {
+                    contentType = requestContext.headers[headerKey]
+                }
                 beginXMLRequest.setRequestHeader(headerKey, requestContext.headers[headerKey]);
             }
 
@@ -77,6 +137,7 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
             const uniqueId = uint32.toString(16);
             beginXMLRequest.setRequestHeader(X_HEAVY_HTTP_ID, uniqueId);
             beginXMLRequest.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.INIT);
+            beginXMLRequest.setRequestHeader(X_HEAVY_HTTP_CONTENT_LENGTH, data.toString().length.toString())
             const currentRequest = this;
             currentRequest.abort = function () {
                 beginXMLRequest.abort();
@@ -140,7 +201,10 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
                     XMLHttpRequestSend.apply(currentRequest);
                 }
 
-                const preHook = function (abortFunction: () => void) {
+                const preHook = function (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) {
+                    if (contentType !== null) {
+                        xmlHttpRequest.setRequestHeader('content-type', contentType)
+                    }
                     currentRequest.abort = function () {
                         beginXMLRequest.abort();
                         abortFunction();

@@ -139,7 +139,7 @@ describe('initializer test suite ', () => {
     server.install();
 
     const transporter = {
-      transport: (responseText: string, preHook: (abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(true) }
+      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(true) }
     }
 
     initialize({ size: 2 }, transporter);
@@ -173,7 +173,7 @@ describe('initializer test suite ', () => {
     server.install();
 
     const transporter = {
-      transport: (responseText: string, preHook: (abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(false) }
+      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(false) }
     }
 
 
@@ -208,7 +208,7 @@ describe('initializer test suite ', () => {
     server.install();
 
     const transporter = {
-      transport: (responseText: string, preHook: (abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(false) }
+      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(false) }
     }
 
     initialize({ size: 2 }, transporter);
@@ -275,7 +275,7 @@ describe('initializer test suite ', () => {
     server.install();
 
     const transporter = {
-      transport: (responseText: string, preHook: (abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(false) }
+      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(false) }
     }
 
     initialize({ size: 2 }, transporter);
@@ -351,7 +351,7 @@ describe('initializer test suite ', () => {
     server.install();
 
     const transporter = {
-      transport: (responseText: string, preHook: (abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(true) }
+      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(true) }
     }
 
     initialize({ size: 2 }, transporter);
@@ -384,7 +384,7 @@ describe('initializer test suite ', () => {
 
 
     const transporter = {
-      transport: (responseText: string, preHook: (abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => {
+      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => {
         postHook(true)
       }
     }
@@ -427,7 +427,7 @@ describe('initializer test suite ', () => {
     server.install();
 
     const transporter = {
-      transport: (responseText: string, preHook: (abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => {
+      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => {
         postHook(true)
       }
     }
