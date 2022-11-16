@@ -4,7 +4,7 @@
   "description": "A connector for the web clients to handle heavy HTTP requests and responses",
   "main": "index.js",
   "scripts": {
-    "test": "jest --config jestconfig.json",
+    "test": "jest --coverage",
     "build": "tsc"
   },
   "repository": {

@@ -1,7 +1,7 @@
 import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, X_HEAVY_HTTP_CONTENT_LENGTH, X_HEAVY_HTTP_ID } from "./constant";
 
 interface ClientConfig {
-    size: number
+    contentSize: number
 }
 
 
@@ -10,6 +10,10 @@ interface Transporter {
 }
 
 export const initialize = (clientConfig: ClientConfig, transporter: Transporter): void => {
+
+    if (clientConfig.contentSize < 0) {
+        throw new Error("Content Size must be a non-negative integer")
+    }
 
     const XMLHttpRequestSend = XMLHttpRequest.prototype.send;
     const XMLHttpRequestOpen = XMLHttpRequest.prototype.open;
@@ -29,41 +33,58 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
             headers: {},
         }
 
-        const listenerContext = {
-            addedEventListeners: [],
-            removedEventListeners: [],
+        const listenerContext = contextMap.get(this.upload);
+        if (!listenerContext) {
+            contextMap.set(this.upload, {
+                addedEventListeners: [],
+                removedEventListeners: [],
+            });
         }
         contextMap.set(this, context);
-        contextMap.set(this.upload, listenerContext);
         return XMLHttpRequestOpen.apply(this, [method, url, async, username, password]);
     }
 
     XMLHttpRequest.prototype.setRequestHeader = function (key, value) {
         const context = contextMap.get(this);
-        context.headers[key] = value;
-        contextMap.set(this, context);
+        if (context) {
+            context.headers[key] = value;
+            contextMap.set(this, context);
+        }
+
         return XMLHttpRequestSetRequestHeader.apply(this, [key, value]);
 
     };
 
     XMLHttpRequestUpload.prototype.addEventListener = function (type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) {
-        const listenerContext = contextMap.get(this);
+        let listenerContext = contextMap.get(this);
+        if (!listenerContext) {
+            listenerContext = {
+                addedEventListeners: [],
+                removedEventListeners: [],
+            }
+        }
         listenerContext.addedEventListeners.push((xmlHttpRequest: XMLHttpRequest) => XMLHttpRequestUploadAddEventListner.apply(xmlHttpRequest.upload, [type, listener, options]))
         contextMap.set(this, listenerContext);
     };
 
     XMLHttpRequestUpload.prototype.removeEventListener = function (type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) {
-        const listenerContext = contextMap.get(this);
+        let listenerContext = contextMap.get(this);
+        if (!listenerContext) {
+            listenerContext = {
+                addedEventListeners: [],
+                removedEventListeners: [],
+            }
+        }
         listenerContext.removedEventListeners.push((xmlHttpRequest: XMLHttpRequest) => XMLHttpRequestUploadRemoveEventListner.apply(xmlHttpRequest.upload, [type, listener, options]))
         contextMap.set(this, listenerContext);
     };
 
-    function getContentLength(content: Document | Blob | FormData | URLSearchParams | ArrayBufferView | ArrayBuffer | string):number {
+    function getContentLength(content: Document | Blob | FormData | URLSearchParams | ArrayBufferView | ArrayBuffer | string): number {
 
         if (content instanceof Blob) {
             return content.size;
         }
-    
+
         if (content instanceof FormData) {
             // For Content-Disposition
             const contentDispositionLength = 50; // estimated max value
@@ -83,7 +104,7 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
         }
 
         if (content instanceof URLSearchParams) {
-            return Array.from(content).length;
+            return content.toString().length;
         }
 
         if (content instanceof ArrayBuffer
@@ -110,23 +131,24 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
             const serializer = new XMLSerializer();
             return serializer.serializeToString(content).length;
         }
-        return content.byteLength;
+        // Unknown content type! Hence heavy-http wouldn't interfere
+        return 0
 
     }
 
 
     XMLHttpRequest.prototype.send = function (data) {
-
         const requestContext = contextMap.get(this);
         const listenerContext = contextMap.get(this.upload)
-        let contentType: string | null = null;
 
-        if (data && getContentLength(data) > clientConfig.size && !(X_HEAVY_HTTP_ID in requestContext.headers)) {
+        if (data && getContentLength(data) > clientConfig.contentSize && !(X_HEAVY_HTTP_ID in requestContext.headers)) {
+
+            let contentType: string | null = null;
 
             const beginXMLRequest = new XMLHttpRequest();
             beginXMLRequest.open(requestContext.method, requestContext.url, true, requestContext.username, requestContext.password);
             for (const headerKey in requestContext.headers) {
-                if (headerKey.toLowerCase() === 'content-type'.toLowerCase()) {
+                if (headerKey.toLowerCase() === 'content-type') {
                     contentType = requestContext.headers[headerKey]
                 }
                 beginXMLRequest.setRequestHeader(headerKey, requestContext.headers[headerKey]);
@@ -202,6 +224,7 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
                 }
 
                 const preHook = function (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) {
+                    xmlHttpRequest.setRequestHeader(X_HEAVY_HTTP_ID, uniqueId);
                     if (contentType !== null) {
                         xmlHttpRequest.setRequestHeader('content-type', contentType)
                     }
@@ -228,7 +251,7 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
                     }
                     contextMap.delete(currentRequest);
                     contextMap.delete(currentRequest.upload);
-                    XMLHttpRequestSend.apply(currentRequest);
+                    XMLHttpRequestSend.apply(currentRequest, [" "]);
                 }
                 transporter.transport(beginXMLRequest.responseText, preHook, postHook, data, listenerHook)
             });
