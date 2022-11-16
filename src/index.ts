@@ -159,7 +159,6 @@ export const initialize = (clientConfig: ClientConfig, transporter: Transporter)
             const uniqueId = uint32.toString(16);
             beginXMLRequest.setRequestHeader(X_HEAVY_HTTP_ID, uniqueId);
             beginXMLRequest.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.INIT);
-            beginXMLRequest.setRequestHeader(X_HEAVY_HTTP_CONTENT_LENGTH, data.toString().length.toString())
             const currentRequest = this;
             currentRequest.abort = function () {
                 beginXMLRequest.abort();
