@@ -1,4 +1,4 @@
-import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, X_HEAVY_HTTP_CONTENT_LENGTH, X_HEAVY_HTTP_ID } from "./constant";
+import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, X_HEAVY_HTTP_ID } from "./constant";
 
 interface ClientConfig {
     contentSize: number
