@@ -1,6 +1,6 @@
 import { newServer } from 'mock-xmlhttprequest';
 
-import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS } from '../constant';
+import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, X_HEAVY_HTTP_ID } from '../constant';
 import { initialize } from '../index';
 
 class BlobImpl implements Blob {
@@ -134,10 +134,7 @@ describe('initializer test suite ', () => {
 
   test('XML Request with incorrect params ', () => {
    
-    const transporter = {
-      transport: () => { }
-    }
-    expect(()=>initialize({ contentSize: -12 }, transporter)).toThrow(expect.objectContaining({ message: 'Content Size must be a non-negative integer'}));
+    expect(()=>initialize({ contentSize: -12 })).toThrow(expect.objectContaining({ message: 'Content Size must be a non-negative value'}));
 
   });
 
@@ -152,17 +149,19 @@ describe('initializer test suite ', () => {
 
     server.install();
 
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 100 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: () => { }
-    }
-
-    initialize({ contentSize: 100 }, transporter);
-
     let isNotExecuted = true;
+    let isExecuted = false;
+    let isOnloadExecuted = false;
+    let isOnloadStartExecuted = false;
 
     const loadedNotExFunc = function () {
       try {
@@ -176,6 +175,19 @@ describe('initializer test suite ', () => {
 
     xhr.upload.addEventListener('loadend', loadedNotExFunc)
 
+    xhr.onreadystatechange = ()=>{
+      isExecuted = true;
+    }
+
+    xhr.onload = ()=>{
+      isOnloadExecuted = true;
+    }
+
+
+    xhr.onloadstart = ()=>{
+      isOnloadStartExecuted = true;
+    }
+
 
     xhr.open("GET", "/my/url")
     xhr.setRequestHeader("x-test", "data")
@@ -183,6 +195,9 @@ describe('initializer test suite ', () => {
     xhr.addEventListener('loadend', function () {
       try {
         expect(isNotExecuted).toBe(true)
+        expect(isExecuted).toBe(true)
+        expect(isOnloadExecuted).toBe(true)
+        expect(isOnloadStartExecuted).toBe(true)
         expect(xhr.response).toStrictEqual("{ \"message\": \"Success!\" }")
         done();
       } catch (error) {
@@ -202,15 +217,15 @@ describe('initializer test suite ', () => {
     });
     server.install();
 
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 100 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: () => { }
-    }
-
-    initialize({ contentSize: 100 }, transporter);
 
     let isNotExecuted = true;
 
@@ -266,15 +281,15 @@ describe('initializer test suite ', () => {
     });
     server.install();
 
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 100 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: () => { }
-    }
-
-    initialize({ contentSize: 100 }, transporter);
 
     xhr.open("POST", "/my/url")
 
@@ -314,15 +329,15 @@ describe('initializer test suite ', () => {
 
     server.install();
 
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 100 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: () => { }
-    }
-
-    initialize({ contentSize: 100 }, transporter);
 
 
     xhr.open("POST", "/my/url")
@@ -346,6 +361,7 @@ describe('initializer test suite ', () => {
         expect(xhr.response).toStrictEqual("{ \"message\": \"Success!\" }")
         done();
       } catch (error) {
+        server.remove()
         done(error);
       }
     })
@@ -363,17 +379,16 @@ describe('initializer test suite ', () => {
 
     server.install();
 
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 100 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: () => { }
-    }
-
-    initialize({ contentSize: 100 }, transporter);
-
-
+  
     xhr.open("POST", "/my/url")
 
     xhr.setRequestHeader("x-test", "data")
@@ -413,15 +428,17 @@ describe('initializer test suite ', () => {
 
     server.install();
 
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: () => { }
-    }
-
-    initialize({ contentSize: 2000 }, transporter);
+  
 
 
     xhr.open("POST", "/my/url")
@@ -458,29 +475,41 @@ describe('initializer test suite ', () => {
     const server = newServer();
     const requestOrder: any[] = [];
 
+
     server.post('/my/url', (request) => {
       requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
-      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Success!" }');
+
+      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS){
+        request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Success!" }');
+      }else{
+        request.respond(200, {}, '/my/url');
+      }
+    })
+
+    server.put('/my/url', (request) => {
+      requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
+      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
+
     })
 
     server.install();
 
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(true) }
-    }
-
-    initialize({ contentSize: 2 }, transporter);
-
+  
     xhr.open("POST", "/my/url")
     xhr.setRequestHeader("x-test", "data")
     xhr.addEventListener('loadend', function () {
       try {
         expect(xhr.response).toStrictEqual("{ \"message\": \"Success!\" }")
-        expect(requestOrder).toStrictEqual(['init', 'send-success'])
+        expect(requestOrder).toStrictEqual(['init',null, 'send-success'])
         done();
       } catch (error) {
         done(error);
@@ -490,72 +519,49 @@ describe('initializer test suite ', () => {
   });
 
 
-  test('Failed XML Request with body larger than the config limit ', done => {
+  test('Failed XML Request with body larger than the config limit', done => {
 
     const server = newServer();
     const requestOrder: any[] = [];
 
+  
     server.post('/my/url', (request) => {
       requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
-      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Success!" }');
-    })
-
-    server.install();
-
-    const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(false) }
-    }
-
-
-    initialize({ contentSize: 2 }, transporter);
-
-    xhr.open("POST", "/my/url")
-    xhr.setRequestHeader("x-test", "data")
-    xhr.addEventListener('loadend', function () {
-      try {
-        expect(xhr.response).toStrictEqual("{ \"message\": \"Success!\" }")
-        expect(requestOrder).toStrictEqual(['init', 'send-error'])
-        done();
-      } catch (error) {
-        done(error);
+      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS){
+        request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Success!" }');
+      }
+      else if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_ERROR){
+        request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Error!" }');
+      }
+      else{
+        request.respond(200, {}, '/my/url');
       }
     })
-    xhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
-  });
 
-
-  test('Failed XML Request with body larger than the config limit ', done => {
-
-    const server = newServer();
-    const requestOrder: any[] = [];
-
-    server.post('/my/url', (request) => {
+    server.put('/my/url', (request) => {
       requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
-      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Success!" }');
+      request.respond(500, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
+
     })
 
     server.install();
 
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(false) }
-    }
-
-    initialize({ contentSize: 2 }, transporter);
 
     xhr.open("POST", "/my/url")
     xhr.setRequestHeader("x-test", "data")
     xhr.addEventListener('loadend', function () {
       try {
-        expect(xhr.response).toStrictEqual("{ \"message\": \"Success!\" }")
-        expect(requestOrder).toStrictEqual(['init', 'send-error'])
+        expect(xhr.response).toStrictEqual("{ \"message\": \"Error!\" }")
+        expect(requestOrder).toStrictEqual(['init', null,'send-error'])
         done();
       } catch (error) {
         done(error);
@@ -576,15 +582,16 @@ describe('initializer test suite ', () => {
 
     server.install();
 
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
 
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: () => { }
-    }
-
-    initialize({ contentSize: 2 }, transporter);
 
     xhr.open("POST", "/my/url")
     xhr.setRequestHeader("x-test", "data")
@@ -601,81 +608,6 @@ describe('initializer test suite ', () => {
   })
 
 
-  test('Failed transpoter XML Request with body larger than the config limit ', done => {
-
-    const server = newServer();
-    const requestOrder: any[] = [];
-
-    server.post('/my/url', (request) => {
-      requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
-      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Success!" }');
-    })
-
-    server.install();
-
-    const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(false) }
-    }
-
-    initialize({ contentSize: 2 }, transporter);
-
-    xhr.open("POST", "/my/url")
-    xhr.setRequestHeader("x-test", "data")
-    xhr.addEventListener('loadend', function () {
-      try {
-        expect(xhr.response).toStrictEqual("{ \"message\": \"Success!\" }")
-        expect(requestOrder).toStrictEqual(['init', 'send-error'])
-        done();
-      } catch (error) {
-        done(error);
-      }
-    })
-    xhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
-  });
-
-
-
-
-  test('Failed XML Request with body larger than the config limit ', done => {
-
-    const server = newServer();
-    const requestOrder: any[] = [];
-
-    server.post('/my/url', (request) => {
-      requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
-      request.setNetworkError();
-    })
-
-    server.install();
-
-    const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => { postHook(false) }
-    }
-
-    initialize({ contentSize: 2 }, transporter);
-
-    xhr.open("POST", "/my/url")
-    xhr.setRequestHeader("x-test", "data")
-    xhr.addEventListener('loadend', function () {
-      try {
-        expect(xhr.response).toStrictEqual("")
-        expect(requestOrder).toStrictEqual(['init', 'send-error'])
-        done();
-      } catch (error) {
-        done(error);
-      }
-    })
-    xhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
-  });
-
 
 
   test('XML Request with body larger than the config limit - abort', done => {
@@ -687,17 +619,18 @@ describe('initializer test suite ', () => {
 
     server.install();
 
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
 
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: () => { }
-    }
-
-    initialize({ contentSize: 2 }, transporter);
-
     let isExecuted = false;
+    let isAbortExecuted = false;
 
     xhr.addEventListener('abort', function () {
       isExecuted = true;
@@ -707,7 +640,7 @@ describe('initializer test suite ', () => {
     xhr.addEventListener('loadend', function () {
       try {
         expect(xhr.response).toStrictEqual("")
-
+        expect(isAbortExecuted).toBe(true)
         expect(isExecuted).toBe(true)
         done();
       } catch (error) {
@@ -716,45 +649,53 @@ describe('initializer test suite ', () => {
     })
 
     xhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
+    xhr.onabort = ()=>{
+      isAbortExecuted = true;
+    }
     xhr.abort();
   })
 
 
-  test('XML Request with body larger than the config limit - abort in transportor', done => {
+  test('XML Request with body larger than the config limit - error', done => {
     const server = newServer();
 
+    const requestOrder: any[] = [];
+
     server.post('/my/url', (request) => {
-      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Success!" }');
+      requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
+      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS){
+        request.setNetworkError();
+      }
+      else{
+        request.respond(200, {}, '/my/url');
+      }
     })
 
+    server.put('/my/url', (request) => {
+      requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
+      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
+
+    })
     server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2 });
+
+    XMLHttpRequest = global.XMLHttpRequest
 
     const xhr = new XMLHttpRequest();
 
-    XMLHttpRequestUpload.prototype = xhr.upload
+    let isErrorExecuted = false;
 
-    const transporter = {
-      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => {
-        const transportXHR = new XMLHttpRequest();
-        transportXHR.open("POST", "/my/url")
-        preHook(transportXHR, () => { })
-        xhr.abort();
-      }
-    }
-
-    initialize({ contentSize: 2 }, transporter);
-
-    let isExecuted = false;
-
-    xhr.addEventListener('abort', function () {
-      isExecuted = true;
-    })
     xhr.open("POST", "/my/url")
     xhr.setRequestHeader("x-test", "data")
     xhr.addEventListener('loadend', function () {
       try {
         expect(xhr.response).toStrictEqual("")
-        expect(isExecuted).toBe(true)
+        expect(isErrorExecuted).toBe(true)
         done();
       } catch (error) {
         done(error);
@@ -762,9 +703,10 @@ describe('initializer test suite ', () => {
     })
 
     xhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
-
+    xhr.onerror = ()=>{
+      isErrorExecuted = true;
+    }
   })
-
 
   test('XML Request with body larger than the config limit - check download progess', done => {
     const server = newServer();
@@ -777,35 +719,30 @@ describe('initializer test suite ', () => {
         request.downloadProgress(10);
       } else {
         expect(request.requestHeaders.getHeader('content-type')).toStrictEqual('application/json')
-        request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
+        request.respond(200, {}, '/my/url');
       }
     })
+    server.put('/my/url', (request) => {
+      requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
+      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
 
+    })
     server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2 });
+
+    XMLHttpRequest = global.XMLHttpRequest
 
     const xhr = new XMLHttpRequest();
 
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => {
-        const transportXHR = new XMLHttpRequest();
-        transportXHR.open("POST", "/my/url")
-        preHook(transportXHR, () => { })
-        transportXHR.addEventListener('loadend', function () {
-          postHook(true)
-        })
-        transportXHR.send(JSON.stringify({ 'test': 'test-legthy-data' }));
-      }
-    }
-
-    initialize({ contentSize: 2 }, transporter);
-
-    xhr.addEventListener('progress', function () {
+    xhr.onprogress = ()=>{
       expect(true);
       done();
-
-    })
+    }
     xhr.open("POST", "/my/url")
     xhr.setRequestHeader("x-test", "data")
     xhr.setRequestHeader("content-type", "application/json")
@@ -827,18 +764,15 @@ describe('initializer test suite ', () => {
 
     server.install();
 
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 20000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
     const xhr = new XMLHttpRequest();
-
-    XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => {
-        postHook(true)
-      }
-    }
-
-
-    initialize({ contentSize: 20000 }, transporter);
 
     let isExecuted = false;
 
@@ -867,31 +801,34 @@ describe('initializer test suite ', () => {
 
     server.post('/my/url', (request) => {
       requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
+
+      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS){
+        request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
+      }else{
+        request.respond(200, {}, '/my/url');
+      }
+    })
+
+    server.put('/my/url', (request) => {
+      requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
       request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
 
     })
 
+
     server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2 });
+
+    XMLHttpRequest = global.XMLHttpRequest
 
     const xhr = new XMLHttpRequest();
 
     XMLHttpRequestUpload.prototype = xhr.upload
-
-    const transporter = {
-      transport: (responseText: string, preHook: (xmlHttpRequest: XMLHttpRequest, abortFunction: () => void) => void, postHook: (isSuccess: boolean) => void, body: Document | XMLHttpRequestBodyInit, listenerHook: (xmlHttpRequest: XMLHttpRequest) => void) => {
-        const transportXhr = new XMLHttpRequest();
-        transportXhr.open("POST", "/my/url")
-        preHook(transportXhr, () => { })
-        listenerHook(transportXhr)
-        transportXhr.addEventListener('loadend', function () {
-          postHook(true)
-        })
-        transportXhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
-
-      }
-    }
-
-    initialize({ contentSize: 2 }, transporter);
 
     let isExecuted = true;
 
@@ -925,4 +862,167 @@ describe('initializer test suite ', () => {
     xhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
 
   })
+
+
+  test('handle response with larger body successfully', done => {
+    const server = newServer();
+
+    server.post('/my/url', (request) => {
+      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END){
+        request.respond(200, {}, '');
+      }else {
+        request.respond(200, {[X_HEAVY_HTTP_ACTION]:X_HEAVY_HTTP_ACTIONS.DOWNLOAD}, '/my/url');
+      }
+    })
+
+    server.get('/my/url', (request) => {
+      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
+
+    })
+
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
+    const xhr = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhr.upload
+
+    let isNotExecuted = true;
+
+    const onLoadEndFunction = ()=>{
+      isNotExecuted = false;
+    }
+
+
+    xhr.open("POST", "/my/url")
+    xhr.setRequestHeader("x-test", "data")
+    xhr.addEventListener('loadend', onLoadEndFunction)
+    xhr.removeEventListener('loadend',onLoadEndFunction)
+    xhr.addEventListener('loadend', function () {
+      try {
+        expect(xhr.response).toStrictEqual("{ \"message\": \"success!\" }")
+        expect(isNotExecuted).toBe(true);
+        done();
+      } catch (error) {
+        done(error);
+      }
+    })
+    xhr.send(JSON.stringify({ 'test': 'test-legthy-data1111' }));
+
+  })
+
+
+
+  test('handle response with smaller body successfully with removed download-listeners', done => {
+    const server = newServer();
+
+    server.post('/my/url', (request) => {
+      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
+    })
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
+    const xhr = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhr.upload
+
+    let isNotExecuted = true;
+
+    const onLoadEndFunction = ()=>{
+      isNotExecuted = false;
+    }
+
+
+    xhr.open("POST", "/my/url")
+    xhr.setRequestHeader("x-test", "data")
+    xhr.addEventListener('loadend', onLoadEndFunction)
+    xhr.removeEventListener('loadend',onLoadEndFunction)
+    xhr.addEventListener('loadend', function () {
+      try {
+        expect(xhr.response).toStrictEqual("{ \"message\": \"success!\" }")
+        expect(isNotExecuted).toBe(true);
+        done();
+      } catch (error) {
+        done(error);
+      }
+    })
+    xhr.send(JSON.stringify({ 'test': 'test-legthy-data1111' }));
+
+  })
+
+
+
+
+  test('handle response with larger body with timeout', done => {
+    const server = newServer();
+
+    let isNotExecuted = true;
+    server.post('/my/url', (request) => {
+      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END){
+        request.respond(200, {}, '');
+      }else {
+        request.setRequestTimeout()
+      }
+    })
+
+    server.get('/my/url', (request) => {
+      isNotExecuted = false;
+      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
+
+    })
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
+    const xhr = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhr.upload
+    xhr.timeout = 10;
+    let isTimeoutCaptured = false;
+    xhr.ontimeout = ()=>{
+      isTimeoutCaptured = true;
+    }
+    xhr.open("POST", "/my/url")
+    xhr.setRequestHeader("x-test", "data")
+    xhr.addEventListener('loadend', function () {
+      try {
+        expect(xhr.response).toStrictEqual("")
+        expect(isNotExecuted).toBe(true);
+        expect(isTimeoutCaptured).toBe(true);
+        done();
+      } catch (error) {
+        done(error);
+      }
+    })
+    xhr.send(JSON.stringify({ 'test': 'test-legthy-data1111' }));
+
+  })
+
+
 });
+
+
+
