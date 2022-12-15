@@ -1,4 +1,4 @@
-import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, X_HEAVY_HTTP_ID } from "./constant";
+import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, X_HEAVY_HTTP_ID, HEAVY_RESPONSE } from "./constant";
 
 interface ClientConfig {
     contentSize: number
@@ -105,7 +105,7 @@ export const initialize = (clientConfig: ClientConfig): void => {
         }
 
         private _isHeavyResponse() {
-            return this.getAllResponseHeaders() !== null && this.getAllResponseHeaders().includes(X_HEAVY_HTTP_ACTION) && this.getResponseHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD
+            return (this.getAllResponseHeaders() !== null && this.getAllResponseHeaders().includes(X_HEAVY_HTTP_ACTION) && this.getResponseHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD) || (this.originalXMLHttpRequest.responseText && this.originalXMLHttpRequest.responseText.substring(0,14) === HEAVY_RESPONSE)
 
         }
 
@@ -220,6 +220,7 @@ export const initialize = (clientConfig: ClientConfig): void => {
             this.onloadend = null;
             this.originalXMLHttpRequest.onloadend = (event) => {
                 if (!self._isHeavyResponse()) {
+                  
                     self._setStatus(self.originalXMLHttpRequest);
                     if (this.onloadend) {
                         this.onloadend(event);
@@ -228,11 +229,15 @@ export const initialize = (clientConfig: ClientConfig): void => {
                     const downloadXMLRequest = new XMLHttpRequestProxy();            
                     self.status = self.originalXMLHttpRequest.status;
                     self.statusText = self.originalXMLHttpRequest.statusText;
+           
 
-                    downloadXMLRequest.open('GET', self.originalXMLHttpRequest.responseText);
+                    const [heavyResponse, httpIdData, signedURL]  = self.originalXMLHttpRequest.responseText.split("|")
+
+                    const httpId = self.getResponseHeader(X_HEAVY_HTTP_ID) || httpIdData || 'not-found';
+
+                    downloadXMLRequest.open('GET', signedURL);
                     this._downloadXMLHttpRequest = downloadXMLRequest;
                     self.addEventListener('timeout', downloadXMLRequest.abort);
-
                     self.abort = () => {
                         downloadXMLRequest.abort();
                         self.originalXMLHttpRequest.abort();
@@ -248,7 +253,7 @@ export const initialize = (clientConfig: ClientConfig): void => {
 
                     downloadXMLRequest.onabort = () => {
                         const abortXHR = new XMLHttpRequest();
-                        const httpId = self.getResponseHeader(X_HEAVY_HTTP_ID) || 'not-found';
+          
                         abortXHR.open(self.requestContext.method, self.requestContext.url, true, self.requestContext.username, self.requestContext.password);
                         abortXHR.setRequestHeader(X_HEAVY_HTTP_ID, httpId);
                         abortXHR.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.DOWNLOAD_ABORT);
@@ -263,7 +268,6 @@ export const initialize = (clientConfig: ClientConfig): void => {
                     } 
                     downloadXMLRequest.onloadend = (event) => {
                         const downloadCompletedXHR = new XMLHttpRequest();
-                        const httpId = self.getResponseHeader(X_HEAVY_HTTP_ID) || 'not-found';
                         downloadCompletedXHR.open(self.requestContext.method, self.requestContext.url, true, self.requestContext.username, self.requestContext.password);
                         downloadCompletedXHR.setRequestHeader(X_HEAVY_HTTP_ID, httpId);
                         downloadCompletedXHR.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END);
@@ -490,7 +494,6 @@ export const initialize = (clientConfig: ClientConfig): void => {
         addEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions | undefined): void {
             const mainEventHandler = (event: Event) => {
                 if (!this._isHeavyResponse()) {
-            
                     this._setStatus(this.originalXMLHttpRequest);
                 
                     if (this._isEventListenerObject(listener)) {

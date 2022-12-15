@@ -1,6 +1,6 @@
 import { newServer } from 'mock-xmlhttprequest';
 
-import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, X_HEAVY_HTTP_ID } from '../constant';
+import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, HEAVY_RESPONSE } from '../constant';
 import { initialize } from '../index';
 
 class BlobImpl implements Blob {
@@ -655,7 +655,6 @@ describe('initializer test suite ', () => {
     xhr.abort();
   })
 
-
   test('XML Request with body larger than the config limit - error', done => {
     const server = newServer();
 
@@ -749,7 +748,6 @@ describe('initializer test suite ', () => {
     xhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
   })
 
-
   test('XML Request with body less than the config limit - check upload progess', done => {
     const server = newServer();
     const requestOrder: any[] = [];
@@ -793,7 +791,6 @@ describe('initializer test suite ', () => {
     xhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
 
   })
-
 
   test('XML Request with body larger than the config limit - check upload progess', done => {
     const server = newServer();
@@ -863,15 +860,15 @@ describe('initializer test suite ', () => {
 
   })
 
-
   test('handle response with larger body successfully', done => {
     const server = newServer();
 
     server.post('/my/url', (request) => {
+
       if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END){
         request.respond(200, {}, '');
       }else {
-        request.respond(200, {[X_HEAVY_HTTP_ACTION]:X_HEAVY_HTTP_ACTIONS.DOWNLOAD}, '/my/url');
+        request.respond(200, {[X_HEAVY_HTTP_ACTION]:X_HEAVY_HTTP_ACTIONS.DOWNLOAD}, `${HEAVY_RESPONSE}|11111111|/my/url`);
       }
     })
 
@@ -921,6 +918,61 @@ describe('initializer test suite ', () => {
 
 
 
+  test('handle response with larger body successfully when headers are already sent', done => {
+    const server = newServer();
+
+    server.post('/my/url', (request) => {
+      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END){
+        request.respond(200, {}, '');
+      }else {
+        request.respond(200, {}, `${HEAVY_RESPONSE}|11111111|/my/url`);
+      }
+    })
+
+    server.get('/my/url', (request) => {
+      request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
+
+    })
+
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    initialize({ contentSize: 2000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
+    const xhr = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhr.upload
+
+    let isNotExecuted = true;
+
+    const onLoadEndFunction = ()=>{
+      isNotExecuted = false;
+    }
+
+    xhr.open("POST", "/my/url")
+    xhr.setRequestHeader("x-test", "data")
+    xhr.addEventListener('loadend', onLoadEndFunction)
+    xhr.removeEventListener('loadend',onLoadEndFunction)
+    xhr.addEventListener('loadend', function () {
+      try {
+        expect(xhr.response).toStrictEqual("{ \"message\": \"success!\" }")
+        expect(isNotExecuted).toBe(true);
+        done();
+      } catch (error) {
+        done(error);
+      }
+    })
+    xhr.send(JSON.stringify({ 'test': 'test-legthy-data1111' }));
+
+  })
+
+
   test('handle response with smaller body successfully with removed download-listeners', done => {
     const server = newServer();
 
@@ -965,9 +1017,6 @@ describe('initializer test suite ', () => {
     xhr.send(JSON.stringify({ 'test': 'test-legthy-data1111' }));
 
   })
-
-
-
 
   test('handle response with larger body with timeout', done => {
     const server = newServer();
@@ -1020,8 +1069,6 @@ describe('initializer test suite ', () => {
     xhr.send(JSON.stringify({ 'test': 'test-legthy-data1111' }));
 
   })
-
-
 });
 
 
