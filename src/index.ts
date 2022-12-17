@@ -1,13 +1,13 @@
 import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, X_HEAVY_HTTP_ID, HEAVY_RESPONSE } from "./constant";
 
 interface ClientConfig {
-    contentSize: number
+    requestThreshold: number
 }
 
 export const initialize = (clientConfig: ClientConfig): void => {
 
-    if (clientConfig.contentSize < 0) {
-        throw new Error("Content Size must be a non-negative value")
+    if (clientConfig.requestThreshold < 0) {
+        throw new Error("Request Threshold must be a non-negative value")
     }
 
     const XMLHttpRequestUploadAddEventListner = XMLHttpRequestUpload.prototype.addEventListener;
@@ -360,7 +360,7 @@ export const initialize = (clientConfig: ClientConfig): void => {
 
             this.originalXMLHttpRequest.timeout = this.timeout;
 
-            if (body && getContentLength(body) > clientConfig.contentSize && !requestContext.headers.has(X_HEAVY_HTTP_ID)) {
+            if (body && getContentLength(body) > clientConfig.requestThreshold && !requestContext.headers.has(X_HEAVY_HTTP_ID)) {
 
                 const currentRequest = this;
 

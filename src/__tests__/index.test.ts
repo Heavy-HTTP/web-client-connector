@@ -134,7 +134,7 @@ describe('initializer test suite ', () => {
 
   test('XML Request with incorrect params ', () => {
    
-    expect(()=>initialize({ contentSize: -12 })).toThrow(expect.objectContaining({ message: 'Content Size must be a non-negative value'}));
+    expect(()=>initialize({ requestThreshold: -12 })).toThrow(expect.objectContaining({ message: 'Request Threshold must be a non-negative value'}));
 
   });
 
@@ -153,7 +153,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 100 });
+    initialize({ requestThreshold: 100 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -221,7 +221,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 100 });
+    initialize({ requestThreshold: 100 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -285,7 +285,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 100 });
+    initialize({ requestThreshold: 100 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -333,7 +333,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 100 });
+    initialize({ requestThreshold: 100 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -383,7 +383,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 100 });
+    initialize({ requestThreshold: 100 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -433,7 +433,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2000 });
+    initialize({ requestThreshold: 2000 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -498,7 +498,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2 });
+    initialize({ requestThreshold: 2 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -550,7 +550,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2 });
+    initialize({ requestThreshold: 2 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -586,7 +586,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2 });
+    initialize({ requestThreshold: 2 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -623,7 +623,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2 });
+    initialize({ requestThreshold: 2 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -681,7 +681,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2 });
+    initialize({ requestThreshold: 2 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -732,7 +732,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2 });
+    initialize({ requestThreshold: 2 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -766,7 +766,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 20000 });
+    initialize({ requestThreshold: 20000 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -819,7 +819,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2 });
+    initialize({ requestThreshold: 2 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -884,7 +884,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2000 });
+    initialize({ requestThreshold: 2000 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -941,7 +941,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2000 });
+    initialize({ requestThreshold: 2000 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -986,7 +986,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2000 });
+    initialize({ requestThreshold: 2000 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
@@ -1042,7 +1042,7 @@ describe('initializer test suite ', () => {
 
     XMLHttpRequestUpload.prototype = xhrPredefined.upload
 
-    initialize({ contentSize: 2000 });
+    initialize({ requestThreshold: 2000 });
 
     XMLHttpRequest = global.XMLHttpRequest
 
