@@ -229,7 +229,11 @@ export const initialize = (clientConfig: ClientConfig): void => {
                     const downloadXMLRequest = new XMLHttpRequestProxy();            
                     self.status = self.originalXMLHttpRequest.status;
                     self.statusText = self.originalXMLHttpRequest.statusText;
+
+                    const requestContextHeaders = new Map(self.requestContext.headers);
            
+                    requestContextHeaders.delete(X_HEAVY_HTTP_ID);
+                    requestContextHeaders.delete(X_HEAVY_HTTP_ACTION);
 
                     const [heavyResponse, httpIdData, signedURL]  = self.originalXMLHttpRequest.responseText.split("|")
 
@@ -255,7 +259,7 @@ export const initialize = (clientConfig: ClientConfig): void => {
                         const abortXHR = new XMLHttpRequest();
           
                         abortXHR.open(self.requestContext.method, self.requestContext.url, true, self.requestContext.username, self.requestContext.password);
-                        for (const [key, value] of self.requestContext.headers) {
+                        for (const [key, value] of requestContextHeaders) {
                             abortXHR.setRequestHeader(key, value);
                         }
                         abortXHR.withCredentials = self.withCredentials;
@@ -273,7 +277,7 @@ export const initialize = (clientConfig: ClientConfig): void => {
                     downloadXMLRequest.onloadend = (event) => {
                         const downloadCompletedXHR = new XMLHttpRequest();
                         downloadCompletedXHR.open(self.requestContext.method, self.requestContext.url, true, self.requestContext.username, self.requestContext.password);
-                        for (const [key, value] of self.requestContext.headers) {
+                        for (const [key, value] of requestContextHeaders) {
                             downloadCompletedXHR.setRequestHeader(key, value);
                         }
                         downloadCompletedXHR.withCredentials = self.withCredentials;
