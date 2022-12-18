@@ -255,6 +255,10 @@ export const initialize = (clientConfig: ClientConfig): void => {
                         const abortXHR = new XMLHttpRequest();
           
                         abortXHR.open(self.requestContext.method, self.requestContext.url, true, self.requestContext.username, self.requestContext.password);
+                        for (const [key, value] of self.requestContext.headers) {
+                            abortXHR.setRequestHeader(key, value);
+                        }
+                        abortXHR.withCredentials = self.withCredentials;
                         abortXHR.setRequestHeader(X_HEAVY_HTTP_ID, httpId);
                         abortXHR.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.DOWNLOAD_ABORT);
                         abortXHR.send();
@@ -269,6 +273,10 @@ export const initialize = (clientConfig: ClientConfig): void => {
                     downloadXMLRequest.onloadend = (event) => {
                         const downloadCompletedXHR = new XMLHttpRequest();
                         downloadCompletedXHR.open(self.requestContext.method, self.requestContext.url, true, self.requestContext.username, self.requestContext.password);
+                        for (const [key, value] of self.requestContext.headers) {
+                            downloadCompletedXHR.setRequestHeader(key, value);
+                        }
+                        downloadCompletedXHR.withCredentials = self.withCredentials;
                         downloadCompletedXHR.setRequestHeader(X_HEAVY_HTTP_ID, httpId);
                         downloadCompletedXHR.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END);
                         downloadCompletedXHR.send();
@@ -358,6 +366,8 @@ export const initialize = (clientConfig: ClientConfig): void => {
 
             const requestContext = this.requestContext;
 
+            const withCredentialsData = this.withCredentials;
+
             this.originalXMLHttpRequest.timeout = this.timeout;
 
             if (body && getContentLength(body) > clientConfig.requestThreshold && !requestContext.headers.has(X_HEAVY_HTTP_ID)) {
@@ -385,6 +395,10 @@ export const initialize = (clientConfig: ClientConfig): void => {
                     beginXMLRequest.abort();
                     const abortXHR = new XMLHttpRequest()
                     abortXHR.open(requestContext.method, requestContext.url, true, requestContext.username, requestContext.password);
+                    for (const [key, value] of requestContext.headers) {
+                        abortXHR.setRequestHeader(key, value);
+                    }
+                    abortXHR.withCredentials = withCredentialsData;
                     abortXHR.setRequestHeader(X_HEAVY_HTTP_ID, uniqueId);
                     abortXHR.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.SEND_ABORT);
                     abortXHR.send();
@@ -455,6 +469,10 @@ export const initialize = (clientConfig: ClientConfig): void => {
                         uploadXHR.abort()
                         const abortXHR = new XMLHttpRequest()
                         abortXHR.open(requestContext.method, requestContext.url, true, requestContext.username, requestContext.password);
+                        for (const [key, value] of requestContext.headers) {
+                            abortXHR.setRequestHeader(key, value);
+                        }
+                        abortXHR.withCredentials = withCredentialsData;
                         abortXHR.setRequestHeader(X_HEAVY_HTTP_ID, uniqueId);
                         abortXHR.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.SEND_ABORT);
                         abortXHR.send();
