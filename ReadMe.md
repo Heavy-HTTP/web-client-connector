@@ -1,23 +1,23 @@
-### Web Client Connector
+# Web Client Connector
 
 This library is part of the Heavy HTTP project. If you are new to Heavy HTTP it is recommended to go through the [Heavy HTTP documentation](https://github.com/Heavy-HTTP/.github/blob/main/profile/Readme.md) first. 
 
-Web HTTP Client is an extension of the default HTTP Client that is used in the web application (browsers). Web HTTP Client extends the [XMLHTTPRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) and [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) (Fetch is not supported yet). For all the HTTP communication the extended Web HTTP Client is exposed via the same interface. Because of this pattern, regardless of the HTTP client wrapper library (Axios, Node Fetch etc) that is used in the application, Web Client can perform its magic. 
+ Web Client Connector is the Heavy HTTP Client Connector for web applications. And it is an extension of the default HTTP Client that is used in browsers. Web Client Connector extends the [XMLHTTPRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) and [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) (Fetch is not supported yet). For all the HTTP communication, the extended Web HTTP Client Connector is exposed via the same interface. Because of this pattern, regardless of the HTTP client wrapper library (Axios, Node Fetch etc) that is used in the application, Web Client Connector can perform its magic. 
 
 #### Looking under the hood 
-At the initialization of the request Heavy HTTP Client performs the following operations
+At the initialization of the request Web Client Connector performs the following operations
 1. Identify the type of the payload and estimate the size of the payload.
 2. If the size of the payload is beyond the configured threshold shift to the Heavy HTTP Transporter to continue the communication. If not proceed with the existing communication pattern. 
 3. Provide the seamless experience of HTTP client to the HTTP Client wrapper library. 
 
-When receiving the response Heavy HTTP Client performs the following operations
+When receiving the response Web Client Connector performs the following operations
 1. Check whether the response is a Heavy Response or not. 
 2. If it's a Heavy Response then shift to the Heavy HTTP Transporter to fetch the data. Otherwise, proceed with the existing communication pattern. 
 3. Provide the seamless experience of HTTP client to the HTTP Client wrapper library. 
 
-To learn more about the full communication protocol please refer [Heavy HTTP Communication Protocol](https://github.com/Heavy-HTTP/.github/blob/main/profile/Readme.md#heavy-http-communication-protocol).
+To learn more about the full communication protocol please refer to [Heavy HTTP Communication Protocol](https://github.com/Heavy-HTTP/.github/blob/main/profile/Readme.md#heavy-http-communication-protocol).
 
-To learn more about HTTP transporter please refer [Heavy HTTP Transporter](https://github.com/Heavy-HTTP/.github/blob/main/profile/Readme.md#heavy-http-transporter).
+To learn more about HTTP Transporter please refer to [Heavy HTTP Transporter](https://github.com/Heavy-HTTP/transporters).
 
 ### Seamless Experience in XHR Libraries
 
@@ -32,9 +32,9 @@ Web client connector supports any wrapper library that utilizes [XMLHTTPRequest]
 * [jQuery Ajax](https://api.jquery.com/jquery.ajax)
  
 
-### Usage
+### Web Client Connector Implementation
 
-* Usage of Web HTTP Client Connector in a React App.
+* Usage of Web Client Connector in a React App.
 	* index.js
 	```
 	import React from 'react';
@@ -100,6 +100,9 @@ Web client connector supports any wrapper library that utilizes [XMLHTTPRequest]
 	```
 ``` initialize({ requestThreshold: 1 });``` is the intialization point of the library. ```requestThreshold``` is the size of the maximum request body (in bytes) that can be communicated via default HTTP. Based on the architecture of the Rest HTTP service implementation this value varies. This initialization must happen at the very beginning of the application. Even though this library overrides the XMLHTTPRequest it won't interrupt any custom implementations that have been added to the XMLHTTPRequest class. 
 
+### Headers and Cookies
+
+Heavy HTTP Communication Protocol uses multiple requests and responses to handle Heavy Requests. If there are customer headers (ex: Authentication/Authorization headers) or cookies attached to the Heavy Request, Web Client Connector makes sure to send those headers and cookies with every request that it makes to the server. After the Heavy Request is processed the custom headers will be removed from the context (those will be destroyed with the XMLHTTPRequest). Web Client Connector doesn't interfere with the cookie behaviors controlled by the server or the browser.
 
 ### Game Plan
 The Web HTTP Client currently supports [XMLHTTPRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) path only. Extending the capabilities to [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) is the next milestone. 
