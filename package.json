@@ -2,7 +2,8 @@
   "name": "@heavy-http/web-client-connector",
   "version": "1.0.11",
   "description": "A connector for the web clients to handle heavy HTTP requests and responses",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "test": "jest --coverage",
     "build": "tsc"
