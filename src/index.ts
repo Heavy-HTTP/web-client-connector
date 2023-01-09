@@ -16,6 +16,28 @@ export const initialize = (clientConfig: ClientConfig): void => {
     const XMLHttpRequestDownloadAddEventListner = XMLHttpRequest.prototype.addEventListener;
     const XMLHttpRequestDownloadRemoveEventListner = XMLHttpRequest.prototype.removeEventListener;
 
+    function generateUniqueId():string{
+        const uint32 = window.crypto.getRandomValues(new Uint32Array(1))[0];
+       return uint32.toString(16);
+    }
+
+    async function getContentSizeOfReadableStream( requestBody: ReadableStream<Uint8Array> | null):  Promise<number>{
+
+        if(requestBody){
+            let isPending = true;
+            let contentSize = 0;
+            do{
+                const readableResults =  await requestBody.getReader().read();
+                contentSize += (readableResults.value) ? readableResults.value.byteLength : 0
+                isPending = !readableResults.done
+            }while(isPending)
+
+            return contentSize;
+    
+        }
+        return 0;
+    }
+
     function getContentLength(content: Document | Blob | FormData | URLSearchParams | ArrayBufferView | ArrayBuffer | string): number {
 
         if (content instanceof Blob) {
@@ -390,8 +412,9 @@ export const initialize = (clientConfig: ClientConfig): void => {
                 }
 
                 beginXMLRequest.withCredentials = this.withCredentials;
-                const uint32 = window.crypto.getRandomValues(new Uint32Array(1))[0];
-                const uniqueId = uint32.toString(16);
+
+                const uniqueId = generateUniqueId();
+       
                 beginXMLRequest.setRequestHeader(X_HEAVY_HTTP_ID, uniqueId);
                 beginXMLRequest.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.INIT);
 
@@ -567,5 +590,63 @@ export const initialize = (clientConfig: ClientConfig): void => {
     Object.defineProperty(global, 'XMLHttpRequest', {
         value: XMLHttpRequestProxy,
     });
+
+
+    const { fetch: nativeFetch } = window;
+
+    window.fetch = async (input, init) => {
+
+        let finalizedRequest;
+
+        if(init){
+            finalizedRequest = new Request(input,init); 
+        }
+
+        if(input instanceof Request){
+            finalizedRequest = input;
+
+        }else {
+            finalizedRequest = new Request(input);
+        }
+
+        let responseObj = new Response();
+
+        if (finalizedRequest.bodyUsed && await getContentSizeOfReadableStream(finalizedRequest.body) > clientConfig.requestThreshold) {
+
+            const originalRequestHeaders = finalizedRequest.headers;
+        
+            const uniqueId = generateUniqueId();
+
+            originalRequestHeaders.append(X_HEAVY_HTTP_ID, uniqueId);
+            originalRequestHeaders.append(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.INIT);
+
+            const initRequest = new Request(finalizedRequest, {body:'', headers:originalRequestHeaders})
+
+            const uploadURLResponse = await nativeFetch(initRequest);
+            const uploadURL = await uploadURLResponse.text();
+            await nativeFetch(uploadURL, {method: 'PUT',body:finalizedRequest.body, ...originalRequestHeaders.has('content-type') && {headers: new Headers(
+                [
+                    ['Content-Type', originalRequestHeaders.get('content-type') || '']
+                ])} });
+
+            originalRequestHeaders.set(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS)
+            const uploadSuccessRequest = new Request(finalizedRequest,{body:'', headers:originalRequestHeaders} )
+            responseObj = await nativeFetch(uploadSuccessRequest);
+
+        }else {
+            responseObj = await nativeFetch(finalizedRequest);
+        }
+
+        // if(responseObj.isHeavy){
+
+        //    const dataBodyResponse = await nativeFetch(resource, {...rest, body:''});
+        //    await nativeFetch(resource, {...rest, body:''});
+        //    responseObj = new Response();
+
+        // }
+        return responseObj;
+       
+    };
+
 
 }
