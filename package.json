@@ -13,7 +13,9 @@
     "url": "git+https://github.com/Heavy-HTTP/web-client-connector.git"
   },
   "keywords": [
-    "http"
+    "http",
+    "xmlhttprequest", 
+    "fetch"
   ],
   "author": "PasinduS",
   "license": "MIT",
