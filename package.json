@@ -14,7 +14,7 @@
   },
   "keywords": [
     "http",
-    "xmlhttprequest", 
+    "xmlhttprequest",
     "fetch"
   ],
   "author": "PasinduS",
@@ -26,6 +26,7 @@
   "devDependencies": {
     "@types/jest": "^29.2.2",
     "jest": "^29.3.0",
+    "jest-fetch-mock": "^3.0.3",
     "mock-xmlhttprequest": "^8.1.0",
     "prettier": "^2.7.1",
     "ts-jest": "^29.0.3",

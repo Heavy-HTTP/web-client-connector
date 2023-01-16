@@ -1,5 +1,5 @@
 import { newServer } from 'mock-xmlhttprequest';
-
+import { enableFetchMocks, disableFetchMocks } from 'jest-fetch-mock'
 import { X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS, HEAVY_RESPONSE } from '../constant';
 import { initialize } from '../index';
 
@@ -16,6 +16,62 @@ class BlobImpl implements Blob {
     throw new Error('Method not implemented.');
   }
   text(): Promise<string> {
+    throw new Error('Method not implemented.');
+  }
+
+}
+
+class MockReadableStreamDefaultReader implements ReadableStreamDefaultReader{
+  times:number;
+  closed: Promise<undefined>;
+  value:any;
+
+  constructor(value:any){
+    this.times = 0;
+    this.value = value;
+    this.closed = new Promise((resolve, reject) => {
+      resolve(undefined)});
+  }
+
+  read(): Promise<ReadableStreamReadResult<any>> {
+    this.times = this.times + 1;
+    return new Promise((resolve, reject) => {
+     resolve(this.times === 1? { done: false,
+      value: this.value
+      }: { done: true})
+    });
+
+  }
+  releaseLock(): void {
+    throw new Error('Method not implemented.');
+  }
+  cancel(reason?: any): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+}
+
+class MockReadableStream implements ReadableStream {
+  locked: boolean;
+  value:any;
+  constructor(value:any){
+    this.value = value;
+    this.locked = false;
+  }
+  cancel(reason?: any): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+  getReader(): ReadableStreamDefaultReader<any> {
+    return new MockReadableStreamDefaultReader(this.value)
+
+  }
+  pipeThrough<T>(transform: ReadableWritablePair<T, any>, options?: StreamPipeOptions | undefined): ReadableStream<T> {
+    throw new Error('Method not implemented.');
+  }
+  pipeTo(destination: WritableStream<any>, options?: StreamPipeOptions | undefined): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+  tee(): [ReadableStream<any>, ReadableStream<any>] {
     throw new Error('Method not implemented.');
   }
 
@@ -85,11 +141,14 @@ class FormDataImpl implements FormData {
   }
 }
 
-describe('initializer test suite ', () => {
+describe('XMLHttpRequest test suite ', () => {
 
   const globalTemp = Object.assign({}, global);
 
   beforeEach(() => {
+
+    enableFetchMocks();
+
     Object.defineProperty(global, 'window', {
       value: {},
     });
@@ -116,25 +175,220 @@ describe('initializer test suite ', () => {
     });
 
     Object.defineProperty(global, 'Error', {
-      value:Error,
+      value: Error,
     })
 
     Object.defineProperty(global, 'Object', {
-      value:Object,
+      value: Object,
     })
 
     Object.defineProperty(global, 'Array', {
-      value:Array,
+      value: Array,
     })
   })
 
   afterEach(() => {
     global = Object.assign({}, globalTemp);
+    disableFetchMocks();
   })
 
-  test('XML Request with incorrect params ', () => {
+
+  test('Initialize fetch request with Request Init', async () => {
+
+    const server = newServer();
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    enableFetchMocks();
+
+    window.fetch = async (input, init) => {
+      return new Response('', { status: 200, statusText: "okDone" })
+    }
+
+    initialize({ requestThreshold: 1 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
+    const response = await window.fetch('testUrl',{method:"POST"})
+
+    expect(response.statusText).toEqual("okDone")
+
+  });
+
+  test('Initialize fetch request with Request URL', async () => {
+
+    const server = newServer();
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    enableFetchMocks();
+
+    window.fetch = async (input, init) => {
+      return new Response('', { status: 200, statusText: "okDone" })
+    }
+
+    initialize({ requestThreshold: 1 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
+    const response = await window.fetch('testUrl')
+
+    expect(response.statusText).toEqual("okDone")
+
+  });
+
+  test('Initialize fetch request with Request', async () => {
+
+    const server = newServer();
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+
+    window.fetch = async (input, init) => {
+      return new Response('', { status: 200, statusText: "okDone" })
+    }
+
+    initialize({ requestThreshold: 1 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+
+    const response = await window.fetch(new Request("testURl"))
+    
+    expect(response.statusText).toEqual("okDone")
+
+  });
+
+
+  test('use the heavy http flow with body less than the threshold', async () => {
+
+    const server = newServer();
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    enableFetchMocks();
+
+    window.fetch = async (input, init) => {
+      return new Response('', { status: 200, statusText: "okDone" })
+    }
+
+    initialize({ requestThreshold: 12000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
    
-    expect(()=>initialize({ requestThreshold: -12 })).toThrow(expect.objectContaining({ message: 'Request Threshold must be a non-negative value'}));
+   
+    const request = new Request("testURl", {method:"POST"});
+
+    request.clone = () =>{
+      const requestCloned = new Request("testURl", {method:"POST"})
+      Object.defineProperty(requestCloned, "body", { value: new MockReadableStream("test")});
+      return requestCloned
+    }
+
+    const response = await window.fetch(request)
+
+    expect(response.statusText).toEqual("okDone")
+
+  });
+
+
+  test('use the heavy http flow with body greater than the threshold', async () => {
+
+    const server = newServer();
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    enableFetchMocks();
+
+    window.fetch = async (input, init) => {
+      const requestObj = new Request(input);
+      if (requestObj.headers.get(X_HEAVY_HTTP_ACTION) ===X_HEAVY_HTTP_ACTIONS.INIT){
+        return new Response('testS3URL', { status: 200, statusText: "ok" })
+      }
+      if (requestObj.url === 'testS3URL'){
+        return new Response('', { status: 200, statusText: "ok" })
+      }
+      return new Response('', { status: 200, statusText: "okDone" })
+    }
+
+    initialize({ requestThreshold: 1 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+   
+    const request = new Request("testURl", {method:"POST"});
+
+    request.clone = () =>{
+      const requestCloned = new Request("testURl", {method:"POST"})
+      Object.defineProperty(requestCloned, "body", { value: new MockReadableStream(new Uint8Array(10))});
+      return requestCloned
+    }
+
+    const response = await window.fetch(request)
+
+    expect(response.statusText).toEqual("okDone")
+
+  });
+
+
+  test('use the heavy http flow with body greater than the threshold and failed during the process', async () => {
+
+    const server = newServer();
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    enableFetchMocks();
+
+    window.fetch = async (input, init) => {
+      const requestObj = new Request(input);
+      if (requestObj.headers.get(X_HEAVY_HTTP_ACTION) ===X_HEAVY_HTTP_ACTIONS.INIT){
+          throw new Error();
+      }
+      return new Response('', { status: 200, statusText: "okDone" })
+    }
+
+    initialize({ requestThreshold: 1 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+   
+    const request = new Request("testURl", {method:"POST"});
+
+    request.clone = () =>{
+      const requestCloned = new Request("testURl", {method:"POST"})
+      Object.defineProperty(requestCloned, "body", { value: new MockReadableStream(new Uint8Array(10))});
+      return requestCloned
+    }
+
+    await expect(window.fetch(request)).rejects.toThrow()
+
+  });
+
+
+  test('XML Request with incorrect params ', () => {
+
+    expect(() => initialize({ requestThreshold: -12 })).toThrow(expect.objectContaining({ message: 'Request Threshold must be a non-negative value' }));
 
   });
 
@@ -175,16 +429,16 @@ describe('initializer test suite ', () => {
 
     xhr.upload.addEventListener('loadend', loadedNotExFunc)
 
-    xhr.onreadystatechange = ()=>{
+    xhr.onreadystatechange = () => {
       isExecuted = true;
     }
 
-    xhr.onload = ()=>{
+    xhr.onload = () => {
       isOnloadExecuted = true;
     }
 
 
-    xhr.onloadstart = ()=>{
+    xhr.onloadstart = () => {
       isOnloadStartExecuted = true;
     }
 
@@ -388,7 +642,7 @@ describe('initializer test suite ', () => {
     XMLHttpRequest = global.XMLHttpRequest
 
     const xhr = new XMLHttpRequest();
-  
+
     xhr.open("POST", "/my/url")
 
     xhr.setRequestHeader("x-test", "data")
@@ -438,7 +692,7 @@ describe('initializer test suite ', () => {
     XMLHttpRequest = global.XMLHttpRequest
 
     const xhr = new XMLHttpRequest();
-  
+
 
 
     xhr.open("POST", "/my/url")
@@ -479,9 +733,9 @@ describe('initializer test suite ', () => {
     server.post('/my/url', (request) => {
       requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
 
-      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS){
+      if (request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS) {
         request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Success!" }');
-      }else{
+      } else {
         request.respond(200, {}, '/my/url');
       }
     })
@@ -503,13 +757,13 @@ describe('initializer test suite ', () => {
     XMLHttpRequest = global.XMLHttpRequest
 
     const xhr = new XMLHttpRequest();
-  
+
     xhr.open("POST", "/my/url")
     xhr.setRequestHeader("x-test", "data")
     xhr.addEventListener('loadend', function () {
       try {
         expect(xhr.response).toStrictEqual("{ \"message\": \"Success!\" }")
-        expect(requestOrder).toStrictEqual(['init',null, 'send-success'])
+        expect(requestOrder).toStrictEqual(['init', null, 'send-success'])
         done();
       } catch (error) {
         done(error);
@@ -524,16 +778,16 @@ describe('initializer test suite ', () => {
     const server = newServer();
     const requestOrder: any[] = [];
 
-  
+
     server.post('/my/url', (request) => {
       requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
-      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS){
+      if (request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS) {
         request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Success!" }');
       }
-      else if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_ERROR){
+      else if (request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_ERROR) {
         request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "Error!" }');
       }
-      else{
+      else {
         request.respond(200, {}, '/my/url');
       }
     })
@@ -561,7 +815,7 @@ describe('initializer test suite ', () => {
     xhr.addEventListener('loadend', function () {
       try {
         expect(xhr.response).toStrictEqual("{ \"message\": \"Error!\" }")
-        expect(requestOrder).toStrictEqual(['init', null,'send-error'])
+        expect(requestOrder).toStrictEqual(['init', null, 'send-error'])
         done();
       } catch (error) {
         done(error);
@@ -649,7 +903,7 @@ describe('initializer test suite ', () => {
     })
 
     xhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
-    xhr.onabort = ()=>{
+    xhr.onabort = () => {
       isAbortExecuted = true;
     }
     xhr.abort();
@@ -662,10 +916,10 @@ describe('initializer test suite ', () => {
 
     server.post('/my/url', (request) => {
       requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
-      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS){
+      if (request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS) {
         request.setNetworkError();
       }
-      else{
+      else {
         request.respond(200, {}, '/my/url');
       }
     })
@@ -702,7 +956,7 @@ describe('initializer test suite ', () => {
     })
 
     xhr.send(JSON.stringify({ 'test': 'test-legthy-data' }));
-    xhr.onerror = ()=>{
+    xhr.onerror = () => {
       isErrorExecuted = true;
     }
   })
@@ -738,7 +992,7 @@ describe('initializer test suite ', () => {
 
     const xhr = new XMLHttpRequest();
 
-    xhr.onprogress = ()=>{
+    xhr.onprogress = () => {
       expect(true);
       done();
     }
@@ -799,9 +1053,9 @@ describe('initializer test suite ', () => {
     server.post('/my/url', (request) => {
       requestOrder.push(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION))
 
-      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS){
+      if (request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS) {
         request.respond(200, { 'Content-Type': 'application/json' }, '{ "message": "success!" }');
-      }else{
+      } else {
         request.respond(200, {}, '/my/url');
       }
     })
@@ -865,10 +1119,10 @@ describe('initializer test suite ', () => {
 
     server.post('/my/url', (request) => {
 
-      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END){
+      if (request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END) {
         request.respond(200, {}, '');
-      }else {
-        request.respond(200, {[X_HEAVY_HTTP_ACTION]:X_HEAVY_HTTP_ACTIONS.DOWNLOAD}, `${HEAVY_RESPONSE}|11111111|/my/url`);
+      } else {
+        request.respond(200, { [X_HEAVY_HTTP_ACTION]: X_HEAVY_HTTP_ACTIONS.DOWNLOAD }, `${HEAVY_RESPONSE}|11111111|/my/url`);
       }
     })
 
@@ -894,7 +1148,7 @@ describe('initializer test suite ', () => {
 
     let isNotExecuted = true;
 
-    const onLoadEndFunction = ()=>{
+    const onLoadEndFunction = () => {
       isNotExecuted = false;
     }
 
@@ -902,7 +1156,7 @@ describe('initializer test suite ', () => {
     xhr.open("POST", "/my/url")
     xhr.setRequestHeader("x-test", "data")
     xhr.addEventListener('loadend', onLoadEndFunction)
-    xhr.removeEventListener('loadend',onLoadEndFunction)
+    xhr.removeEventListener('loadend', onLoadEndFunction)
     xhr.addEventListener('loadend', function () {
       try {
         expect(xhr.response).toStrictEqual("{ \"message\": \"success!\" }")
@@ -922,9 +1176,9 @@ describe('initializer test suite ', () => {
     const server = newServer();
 
     server.post('/my/url', (request) => {
-      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END){
+      if (request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END) {
         request.respond(200, {}, '');
-      }else {
+      } else {
         request.respond(200, {}, `${HEAVY_RESPONSE}|11111111|/my/url`);
       }
     })
@@ -951,14 +1205,14 @@ describe('initializer test suite ', () => {
 
     let isNotExecuted = true;
 
-    const onLoadEndFunction = ()=>{
+    const onLoadEndFunction = () => {
       isNotExecuted = false;
     }
 
     xhr.open("POST", "/my/url")
     xhr.setRequestHeader("x-test", "data")
     xhr.addEventListener('loadend', onLoadEndFunction)
-    xhr.removeEventListener('loadend',onLoadEndFunction)
+    xhr.removeEventListener('loadend', onLoadEndFunction)
     xhr.addEventListener('loadend', function () {
       try {
         expect(xhr.response).toStrictEqual("{ \"message\": \"success!\" }")
@@ -996,7 +1250,7 @@ describe('initializer test suite ', () => {
 
     let isNotExecuted = true;
 
-    const onLoadEndFunction = ()=>{
+    const onLoadEndFunction = () => {
       isNotExecuted = false;
     }
 
@@ -1004,7 +1258,7 @@ describe('initializer test suite ', () => {
     xhr.open("POST", "/my/url")
     xhr.setRequestHeader("x-test", "data")
     xhr.addEventListener('loadend', onLoadEndFunction)
-    xhr.removeEventListener('loadend',onLoadEndFunction)
+    xhr.removeEventListener('loadend', onLoadEndFunction)
     xhr.addEventListener('loadend', function () {
       try {
         expect(xhr.response).toStrictEqual("{ \"message\": \"success!\" }")
@@ -1023,9 +1277,9 @@ describe('initializer test suite ', () => {
 
     let isNotExecuted = true;
     server.post('/my/url', (request) => {
-      if(request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END){
+      if (request.requestHeaders.getHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END) {
         request.respond(200, {}, '');
-      }else {
+      } else {
         request.setRequestTimeout()
       }
     })
@@ -1051,7 +1305,7 @@ describe('initializer test suite ', () => {
     XMLHttpRequestUpload.prototype = xhr.upload
     xhr.timeout = 10;
     let isTimeoutCaptured = false;
-    xhr.ontimeout = ()=>{
+    xhr.ontimeout = () => {
       isTimeoutCaptured = true;
     }
     xhr.open("POST", "/my/url")
@@ -1069,7 +1323,8 @@ describe('initializer test suite ', () => {
     xhr.send(JSON.stringify({ 'test': 'test-legthy-data1111' }));
 
   })
+
+
+
 });
-
-
 
