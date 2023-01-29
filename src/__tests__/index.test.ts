@@ -386,6 +386,144 @@ describe('XMLHttpRequest test suite ', () => {
   });
 
 
+  test('use the heavy http flow with heavy response successfully', async () => {
+
+    const server = newServer();
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    enableFetchMocks();
+
+    window.fetch = async (input, init) => {
+      const requestObj = new Request(input);
+      if (requestObj.headers.get(X_HEAVY_HTTP_ACTION) ===X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END){
+        return new Response('', { status: 200, statusText: "okDone"  })
+      }
+      if (requestObj.url === 'testURl'){
+        const responseObject = new Response(`${HEAVY_RESPONSE}|11111111|/my/url`, { status: 200, statusText: "okDone"})
+        Object.defineProperty(responseObject, "url", { value: 'mockedURL' });
+        Object.defineProperty(responseObject, "redirected", { value: false});
+        return responseObject
+      }
+      return new Response('testBody', { status: 200, statusText: "okDone" })
+    }
+
+    initialize({ requestThreshold: 100000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+   
+   const data =  await window.fetch(new Request("testURl", {method:"POST"}))
+
+   const responseBody = await data.text();
+   expect(responseBody).toEqual("testBody")
+   expect(data.url).toEqual("mockedURL");
+   expect(data.redirected).toEqual(false)
+
+  });
+
+  test('use the heavy http flow with heavy response with error on initial request', async () => {
+
+    const server = newServer();
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    enableFetchMocks();
+
+    window.fetch = async (input, init) => {
+      throw new Error();
+    }
+
+    initialize({ requestThreshold: 100000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+   
+   await expect(window.fetch(new Request("testURl", {method:"POST"}))).rejects.toThrow()
+
+  });
+
+
+  test('use the heavy http flow with heavy response with error on body fetch request', async () => {
+
+    const server = newServer();
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    enableFetchMocks();
+
+    window.fetch = async (input, init) => {
+      const requestObj = new Request(input);
+      if (requestObj.url === 'testURl'){
+        const responseObject = new Response(`${HEAVY_RESPONSE}|11111111|/my/url`, { status: 200, statusText: "okDone"})
+        Object.defineProperty(responseObject, "url", { value: 'mockedURL' });
+        Object.defineProperty(responseObject, "redirected", { value: false});
+        return responseObject
+      }
+      throw new Error();
+   
+    }
+
+    initialize({ requestThreshold: 100000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+   
+   await expect(window.fetch(new Request("testURl", {method:"POST"}))).rejects.toThrow()
+
+  });
+
+
+  test('use the heavy http flow with heavy response with error on download complete request', async () => {
+
+    const server = newServer();
+
+    server.install();
+
+    const xhrPredefined = new XMLHttpRequest();
+
+    XMLHttpRequestUpload.prototype = xhrPredefined.upload
+
+    enableFetchMocks();
+
+    window.fetch = async (input, init) => {
+      const requestObj = new Request(input);
+      if (requestObj.headers.get(X_HEAVY_HTTP_ACTION) ===X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END){
+        throw new Error();
+      }
+      if (requestObj.url === 'testURl'){
+        const responseObject = new Response(`${HEAVY_RESPONSE}|11111111|/my/url`, { status: 200, statusText: "okDone"})
+        Object.defineProperty(responseObject, "url", { value: 'mockedURL' });
+        Object.defineProperty(responseObject, "redirected", { value: false});
+        return responseObject
+      }
+      return new Response('testBody', { status: 200, statusText: "okDone" })
+    }
+
+    initialize({ requestThreshold: 100000 });
+
+    XMLHttpRequest = global.XMLHttpRequest
+   
+   const data =  await window.fetch(new Request("testURl", {method:"POST"}))
+
+   const responseBody = await data.text();
+   expect(responseBody).toEqual("testBody")
+   expect(data.url).toEqual("mockedURL");
+   expect(data.redirected).toEqual(false)
+
+  });
+
+
+
   test('XML Request with incorrect params ', () => {
 
     expect(() => initialize({ requestThreshold: -12 })).toThrow(expect.objectContaining({ message: 'Request Threshold must be a non-negative value' }));
