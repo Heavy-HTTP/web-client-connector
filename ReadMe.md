@@ -2,7 +2,7 @@
 
 This library is part of the Heavy HTTP project. If you are new to Heavy HTTP it is recommended to go through the [Heavy HTTP documentation](https://github.com/Heavy-HTTP/.github/blob/main/profile/Readme.md) first. 
 
- Web Client Connector is the Heavy HTTP Client Connector for web applications. And it is an extension of the default HTTP Client that is used in browsers. Web Client Connector extends the [XMLHTTPRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) and [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) (Fetch is not supported yet). For all the HTTP communication, the extended Web HTTP Client Connector is exposed via the same interface. Because of this pattern, regardless of the HTTP client wrapper library (Axios, Node Fetch etc) that is used in the application, Web Client Connector can perform its magic. 
+ Web Client Connector is the Heavy HTTP Client Connector for web applications. And it is an extension of the default HTTP Client that is used in browsers. Web Client Connector extends the [XMLHTTPRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) and [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API). For all the HTTP communication, the extended Web HTTP Client Connector is exposed via the same interface. Because of this pattern, regardless of the HTTP client wrapper library (Axios, Node Fetch etc) that is used in the application, Web Client Connector can perform its magic. 
 
 #### Looking under the hood 
 At the initialization of the request Web Client Connector performs the following operations
@@ -105,4 +105,5 @@ Web client connector supports any wrapper library that utilizes [XMLHTTPRequest]
 Heavy HTTP Communication Protocol uses multiple requests and responses to handle Heavy Requests. If there are customer headers (ex: Authentication/Authorization headers) or cookies attached to the Heavy Request, Web Client Connector makes sure to send those headers and cookies with every request that it makes to the server. After the Heavy Request is processed the custom headers will be removed from the context (those will be destroyed with the XMLHTTPRequest). Web Client Connector doesn't interfere with the cookie behaviors controlled by the server or the browser.
 
 ### Game Plan
-The Web HTTP Client currently supports [XMLHTTPRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) path only. Extending the capabilities to [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) is the next milestone. 
+1. The Web HTTP Client currently supports [XMLHTTPRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) path only. Extending the capabilities to [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) is the next milestone. :heavy_check_mark:
+2. Heavy HTTP is to handle heavy request and responses. But can't it be fast too? Enhancing the performance with multipart parallel uploads and downloads is the next step. 
