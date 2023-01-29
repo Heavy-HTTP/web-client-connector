@@ -16,6 +16,38 @@ export const initialize = (clientConfig: ClientConfig): void => {
     const XMLHttpRequestDownloadAddEventListner = XMLHttpRequest.prototype.addEventListener;
     const XMLHttpRequestDownloadRemoveEventListner = XMLHttpRequest.prototype.removeEventListener;
 
+    function generateUniqueId(): string {
+        const uint32 = window.crypto.getRandomValues(new Uint32Array(1))[0];
+        return uint32.toString(16);
+    }
+
+    async function getContentDataReadableStream(requestBody: ReadableStream<Uint8Array> | null): Promise<{ content: Uint8Array | null, contentSize: number }> {
+
+        if (requestBody) {
+            let isPending = true;
+            let contentSize = 0;
+            let arrayLegnth = 0;
+            const unit8Arrays = []
+            const reader = requestBody.getReader();
+            do {
+                const readableResults = await reader.read();
+
+                if (readableResults.value) {
+                    contentSize += readableResults.value.byteLength
+                    arrayLegnth += readableResults.value.length
+                    unit8Arrays.push(readableResults.value)
+                }
+
+                isPending = !readableResults.done
+            } while (isPending)
+            const mergedArray = new Uint8Array(arrayLegnth);
+            unit8Arrays.forEach(array => mergedArray.set(array))
+            return { content: mergedArray, contentSize };
+
+        }
+        return { content: null, contentSize: 0 };
+    }
+
     function getContentLength(content: Document | Blob | FormData | URLSearchParams | ArrayBufferView | ArrayBuffer | string): number {
 
         if (content instanceof Blob) {
@@ -105,7 +137,7 @@ export const initialize = (clientConfig: ClientConfig): void => {
         }
 
         private _isHeavyResponse() {
-            return (this.getAllResponseHeaders() !== null && this.getAllResponseHeaders().includes(X_HEAVY_HTTP_ACTION) && this.getResponseHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD) || (this.originalXMLHttpRequest.responseText && this.originalXMLHttpRequest.responseText.substring(0,14) === HEAVY_RESPONSE)
+            return (this.getAllResponseHeaders() !== null && this.getAllResponseHeaders().includes(X_HEAVY_HTTP_ACTION) && this.getResponseHeader(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD) || (this.originalXMLHttpRequest.responseText && this.originalXMLHttpRequest.responseText.substring(0, 14) === HEAVY_RESPONSE)
 
         }
 
@@ -220,22 +252,22 @@ export const initialize = (clientConfig: ClientConfig): void => {
             this.onloadend = null;
             this.originalXMLHttpRequest.onloadend = (event) => {
                 if (!self._isHeavyResponse()) {
-                  
+
                     self._setStatus(self.originalXMLHttpRequest);
                     if (this.onloadend) {
                         this.onloadend(event);
                     }
                 } else {
-                    const downloadXMLRequest = new XMLHttpRequestProxy();            
+                    const downloadXMLRequest = new XMLHttpRequestProxy();
                     self.status = self.originalXMLHttpRequest.status;
                     self.statusText = self.originalXMLHttpRequest.statusText;
 
                     const requestContextHeaders = new Map(self.requestContext.headers);
-           
+
                     requestContextHeaders.delete(X_HEAVY_HTTP_ID);
                     requestContextHeaders.delete(X_HEAVY_HTTP_ACTION);
 
-                    const [heavyResponse, httpIdData, signedURL]  = self.originalXMLHttpRequest.responseText.split("|")
+                    const [heavyResponse, httpIdData, signedURL] = self.originalXMLHttpRequest.responseText.split("|")
 
                     const httpId = self.getResponseHeader(X_HEAVY_HTTP_ID) || httpIdData || 'not-found';
 
@@ -257,7 +289,7 @@ export const initialize = (clientConfig: ClientConfig): void => {
 
                     downloadXMLRequest.onabort = () => {
                         const abortXHR = new XMLHttpRequest();
-          
+
                         abortXHR.open(self.requestContext.method, self.requestContext.url, true, self.requestContext.username, self.requestContext.password);
                         for (const [key, value] of requestContextHeaders) {
                             abortXHR.setRequestHeader(key, value);
@@ -268,12 +300,12 @@ export const initialize = (clientConfig: ClientConfig): void => {
                         abortXHR.send();
                     }
                     downloadXMLRequest.onerror = self.onerror
-                    downloadXMLRequest.onload =()=>{
+                    downloadXMLRequest.onload = () => {
                         this._setResponseData(downloadXMLRequest)
                         if (self.onload) {
                             self.onload(event)
                         }
-                    } 
+                    }
                     downloadXMLRequest.onloadend = (event) => {
                         const downloadCompletedXHR = new XMLHttpRequest();
                         downloadCompletedXHR.open(self.requestContext.method, self.requestContext.url, true, self.requestContext.username, self.requestContext.password);
@@ -289,18 +321,18 @@ export const initialize = (clientConfig: ClientConfig): void => {
                             self.onloadend(event)
                         }
                     };
-                    downloadXMLRequest.onloadstart =()=>{
+                    downloadXMLRequest.onloadstart = () => {
                         this._setResponseData(downloadXMLRequest)
                         if (self.onloadstart) {
                             self.onloadstart(event)
                         }
-                    } 
-                    downloadXMLRequest.onprogress =()=>{
+                    }
+                    downloadXMLRequest.onprogress = () => {
                         this._setResponseData(downloadXMLRequest)
                         if (self.onprogress) {
                             self.onprogress(event)
                         }
-                    } 
+                    }
                     if (!self.isAborted && !self.isTimedOut) {
                         this._downloadXMLHttpRequest = downloadXMLRequest;
                         downloadXMLRequest.send();
@@ -390,8 +422,9 @@ export const initialize = (clientConfig: ClientConfig): void => {
                 }
 
                 beginXMLRequest.withCredentials = this.withCredentials;
-                const uint32 = window.crypto.getRandomValues(new Uint32Array(1))[0];
-                const uniqueId = uint32.toString(16);
+
+                const uniqueId = generateUniqueId();
+
                 beginXMLRequest.setRequestHeader(X_HEAVY_HTTP_ID, uniqueId);
                 beginXMLRequest.setRequestHeader(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.INIT);
 
@@ -517,14 +550,14 @@ export const initialize = (clientConfig: ClientConfig): void => {
             const mainEventHandler = (event: Event) => {
                 if (!this._isHeavyResponse()) {
                     this._setStatus(this.originalXMLHttpRequest);
-                
+
                     if (this._isEventListenerObject(listener)) {
                         listener.handleEvent(event);
                     } else {
                         listener(event)
                     }
-                
-                } 
+
+                }
             }
 
             const subEventHandler = (event: Event) => {
@@ -536,11 +569,11 @@ export const initialize = (clientConfig: ClientConfig): void => {
                     } else {
                         listener(event)
                     }
-                
-                } 
+
+                }
             }
 
-            this.downloadListenerContext.functionReferences.set(listener, [mainEventHandler,subEventHandler]);
+            this.downloadListenerContext.functionReferences.set(listener, [mainEventHandler, subEventHandler]);
             this.downloadListenerContext.addedEventListeners.push((xmlHttpRequest: XMLHttpRequest) => {
                 XMLHttpRequestDownloadAddEventListner.apply(xmlHttpRequest, [type, subEventHandler, options])
             });
@@ -548,7 +581,7 @@ export const initialize = (clientConfig: ClientConfig): void => {
         }
         removeEventListener<K extends keyof XMLHttpRequestEventMap>(type: K, listener: (this: XMLHttpRequest, ev: XMLHttpRequestEventMap[K]) => any, options?: boolean | EventListenerOptions | undefined): void;
         removeEventListener(type: string, listener: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions | undefined): void {
-            const [mainEventHandler,subsubEventHandler] = this.downloadListenerContext.functionReferences.get(listener);
+            const [mainEventHandler, subsubEventHandler] = this.downloadListenerContext.functionReferences.get(listener);
             this.downloadListenerContext.removedEventListeners.push((xmlHttpRequest: XMLHttpRequest) => XMLHttpRequestDownloadRemoveEventListner.apply(xmlHttpRequest, [type, subsubEventHandler, options]))
             this.originalXMLHttpRequest.removeEventListener(type, mainEventHandler, options);
         }
@@ -567,5 +600,103 @@ export const initialize = (clientConfig: ClientConfig): void => {
     Object.defineProperty(global, 'XMLHttpRequest', {
         value: XMLHttpRequestProxy,
     });
+
+
+    const { fetch: nativeFetch } = window;
+
+    window.fetch = async (input, init) => {
+
+        let finalizedRequest;
+
+        if (init) {
+            finalizedRequest = new Request(input, init);
+        }
+
+        if (input instanceof Request) {
+            finalizedRequest = input;
+
+        } else {
+            finalizedRequest = new Request(input);
+        }
+
+        const clonedOriginalRequest = finalizedRequest.clone();
+
+        let responseObj = new Response();
+        const contentData = await getContentDataReadableStream(finalizedRequest.clone().body)
+        if (contentData.content && contentData.contentSize > clientConfig.requestThreshold) {
+            const uniqueId = generateUniqueId();
+            try {
+
+                const originalRequestHeaders = finalizedRequest.headers;
+
+                originalRequestHeaders.append(X_HEAVY_HTTP_ID, uniqueId);
+                originalRequestHeaders.append(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.INIT);
+
+                const initRequest = new Request(finalizedRequest.clone(), { body: '', headers: originalRequestHeaders })
+
+                const uploadURLResponse = await nativeFetch(initRequest);
+                const uploadURL = await uploadURLResponse.text();
+                await nativeFetch(uploadURL, {
+                    method: 'PUT', body: contentData.content, ...originalRequestHeaders.has('content-type') && {
+                        headers: new Headers(
+                            [
+                                ['Content-Type', originalRequestHeaders.get('content-type') || '']
+                            ])
+                    }
+                });
+
+                originalRequestHeaders.set(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.SEND_SUCCESS)
+                const uploadSuccessRequest = new Request(finalizedRequest, { body: ' ', headers: originalRequestHeaders })
+                responseObj = await nativeFetch(uploadSuccessRequest);
+            } catch (error) {
+                const originalRequestHeaders = clonedOriginalRequest.headers;
+                originalRequestHeaders.append(X_HEAVY_HTTP_ID, uniqueId);
+                originalRequestHeaders.append(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.SEND_ABORT);
+                const errorNotifyRequest = new Request(clonedOriginalRequest, { body: '', headers: originalRequestHeaders });
+                await nativeFetch(errorNotifyRequest);
+                throw error;
+            }
+
+        } else {
+            responseObj = await nativeFetch(finalizedRequest);
+        }
+
+        let isResponseHeavy = (responseObj.headers.has(X_HEAVY_HTTP_ACTION) && responseObj.headers.get(X_HEAVY_HTTP_ACTION) === X_HEAVY_HTTP_ACTIONS.DOWNLOAD);
+
+        const textBody = await responseObj.clone().text();
+        if (!isResponseHeavy) {
+            isResponseHeavy = (textBody?.substring(0, 14) === HEAVY_RESPONSE)
+        }
+
+        if (isResponseHeavy) {
+            const [heavyResponse, httpIdData, signedURL] = textBody.split("|")
+            let dataBodyResponse;
+            try {
+                dataBodyResponse = await nativeFetch(signedURL);
+            }
+            finally {
+                const originalRequestHeaders = clonedOriginalRequest.headers;
+                originalRequestHeaders.append(X_HEAVY_HTTP_ID, httpIdData);
+                originalRequestHeaders.append(X_HEAVY_HTTP_ACTION, X_HEAVY_HTTP_ACTIONS.DOWNLOAD_END);
+                const complitionNotifyRequest = new Request(clonedOriginalRequest, { body: '', headers: originalRequestHeaders });
+                try {
+                    await nativeFetch(complitionNotifyRequest);
+                } catch (error) {
+                    console.debug(error)
+                }
+            }
+            const constructedResponse = new Response(dataBodyResponse.body, {
+                headers: responseObj.headers,
+                status: responseObj.status,
+                statusText: responseObj.statusText,
+            });
+            Object.defineProperty(constructedResponse, "url", { value: responseObj.url });
+            Object.defineProperty(constructedResponse, "redirected", { value: responseObj.redirected });
+
+            responseObj = constructedResponse;
+        }
+        return responseObj;
+    };
+
 
 }
