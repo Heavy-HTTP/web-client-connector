@@ -25,11 +25,15 @@ In typical HTTP requests, XHR provides the capability to attach [upload](https:/
 
 ### Currently Supported Web HTTP Client Wrapper Libraries
 
-Web client connector supports any wrapper library that utilizes [XMLHTTPRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) for the HTTP communication. Following libraries are dev-tested. 
+Web client connector supports any wrapper library that utilizes [XMLHTTPRequest](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest) or [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) for the HTTP communication (That covers almost all the wrapper libraries!). Following libraries are dev-tested. 
 * [Axios](https://www.npmjs.com/package/axios)
 * [SuperAgent](https://www.npmjs.com/package/superagent)
 * [request](https://github.com/request/request)
 * [jQuery Ajax](https://api.jquery.com/jquery.ajax)
+* [node-fetch](https://www.npmjs.com/package/node-fetch)
+* [fetchit](https://www.npmjs.com/package/fetchit)
+* [isomorphic-fetch](https://www.npmjs.com/package/isomorphic-fetch)
+
  
 
 ### Web Client Connector Implementation
